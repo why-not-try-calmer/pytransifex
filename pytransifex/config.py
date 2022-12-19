@@ -9,25 +9,29 @@ from dotenv import load_dotenv
 
 class ApiConfig(NamedTuple):
     api_token: str
+    host_name: str
     organization_name: str
     i18n_type: str
-    host_name = "https://rest.api.transifex.com"
     project_slug: str | None = None
 
     @classmethod
     def from_env(cls) -> "ApiConfig":
         load_dotenv()
 
-        token = environ.get("TX_TOKEN")
-        organization = environ.get("ORGANIZATION")
-        i18n_type = environ.get("I18N_TYPE", "PO")
+        base = {
+            "token": environ.get("TX_TOKEN"),
+            "host_name": environ.get("HOST", "https://rest.api.transifex.com"),
+            "organization": environ.get("ORGANIZATION"),
+            "i18n_type": environ.get("I18N_TYPE", "PO"),
+        }
 
-        if any(not v for v in [token, organization, i18n_type]):
-            raise Exception(
-                "Envars 'TX_TOKEN' and 'ORGANIZATION' must be set to non-empty values. Aborting now."
-            )
+        for k, v in base.items():
+            if not v:
+                raise Exception(
+                    f"Keey {k} needs to be set to a non-empty value. Aborting now."
+                )
 
-        return cls(token, organization, i18n_type)  # type: ignore
+        return cls(token, host_name, organization, i18n_type)  # type: ignore
 
 
 path_keys = ["input_directory", "output_directory", "config_file"]
@@ -96,3 +100,10 @@ class CliSettings:
         if k in truthy_obj:
             return truthy_obj[k]
         return defaults[k]
+
+
+class TxProjectConfig(NamedTuple):
+    TX_ORGANIZATION = "opengisch"
+    TX_PROJECT = "qfield-documentation"
+    TX_SOURCE_LANG = "en"
+    TX_TYPE = "GITHUBMARKDOWN"
