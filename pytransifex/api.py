@@ -1,17 +1,19 @@
-#/usr/bin/python3
+# /usr/bin/python3
 
 
 import os
 import codecs
 import requests
 import json
+from urllib import parse
+
 from pytransifex.exceptions import PyTransifexException
 
 
 class Transifex(object):
-    def __init__(self, api_token: str, organization: str, i18n_type: str = 'PO'):
+    def __init__(self, api_token: str, organization: str, i18n_type: str = "PO"):
         """
-        Initializes Transifex 
+        Initializes Transifex
 
         Parameters
         ----------
@@ -23,21 +25,23 @@ class Transifex(object):
             the type of translation (PO, QT, …)
             defaults to: PO
         """
-        self.auth = ('api', api_token)
+        self.auth = ("api", api_token)
         self.api_key = api_token
         self.organization = organization
         self.i18n_type = i18n_type
 
-    def create_project(self,
-                    slug,
-                    name: str = None,
-                    source_language_code: str = 'en-gb',
-                    outsource_project_name: str = None,
-                    private: bool = False,
-                    repository_url: str = None):
+    def create_project(
+        self,
+        slug,
+        name: str = None,
+        source_language_code: str = "en-gb",
+        outsource_project_name: str = None,
+        private: bool = False,
+        repository_url: str = None,
+    ):
         """
         Create a new project on Transifex
-        
+
         Parameters
         ----------
         slug
@@ -63,46 +67,47 @@ class Transifex(object):
         if name is None:
             name = slug
 
-        url = 'https://rest.api.transifex.com/projects'
+        url = "https://rest.api.transifex.com/projects"
         data = {
-            'data': {
-                'attributes': {
-                    'name': name,
-                    'slug': slug,
-                    'description': name,
-                    'private': private,
-                    'repository_url': repository_url
+            "data": {
+                "attributes": {
+                    "name": name,
+                    "slug": slug,
+                    "description": name,
+                    "private": private,
+                    "repository_url": repository_url,
                 },
-                'relationships': {
-                    'organization': {
-                        'data': {
-                            'id': 'o:{}'.format(self.organization),
-                            'type': 'organizations'
+                "relationships": {
+                    "organization": {
+                        "data": {
+                            "id": "o:{}".format(self.organization),
+                            "type": "organizations",
                         }
                     },
-                    'source_language': {
-                        'data': {
+                    "source_language": {
+                        "data": {
                             "id": "l:{}".format(source_language_code),
-                            "type": "languages"
+                            "type": "languages",
                         }
-                    }
+                    },
                 },
-                'type': 'projects'
+                "type": "projects",
             }
-
         }
         if outsource_project_name is not None:
-            data['outsource'] = outsource_project_name
+            data["outsource"] = outsource_project_name
 
-        response = requests.post(url,
-                                 data=json.dumps(data),
-                                 headers={
-                                     'Content-Type': 'application/vnd.api+json',
-                                     'Authorization': 'Bearer {}'.format(self.api_key)
-                                 })
+        response = requests.post(
+            url,
+            data=json.dumps(data),
+            headers={
+                "Content-Type": "application/vnd.api+json",
+                "Authorization": "Bearer {}".format(self.api_key),
+            },
+        )
 
-        if response.status_code != requests.codes['OK']:
-            print('Could not create project with data: {}'.format(data))
+        if response.status_code != requests.codes["OK"]:
+            print("Could not create project with data: {}".format(data))
             raise PyTransifexException(response)
 
     def delete_project(self, project_slug: str):
@@ -118,9 +123,16 @@ class Transifex(object):
         ------
         `PyTransifexException`
         """
-        url = 'https://rest.api.transifex.com/projects/o:{o}:p:{p}'.format(o=self.organization, p=project_slug)
-        response = requests.delete(url, headers={'Content-Type': 'application/vnd.api+json','Authorization': 'Bearer {}'.format(self.api_key)})
-        if response.status_code != requests.codes['OK']:
+        filter_project = f"o:{self.organization}:p:{project_slug}"
+        url = f"https://rest.api.transifex.com/projects/{parse.quote(filter_project)}"
+        response = requests.delete(
+            url,
+            headers={
+                "Content-Type": "application/vnd.api+json",
+                "Authorization": "Bearer {}".format(self.api_key),
+            },
+        )
+        if response.status_code != requests.codes["OK"]:
             raise PyTransifexException(response)
 
     def list_resources(self, project_slug) -> list:
@@ -146,27 +158,31 @@ class Transifex(object):
         ------
         `PyTransifexException`
         """
-        url = 'https://api.transifex.com/organizations/{o}/projects/{p}/resources/'.format(
-            o=self.organization, p=project_slug
-        )
+        filter_project = f"o:{self.organization}:p:{project_slug}"
+        url = f"https://rest.api.transifex.com/resources?filter\[project\]={parse.quote(filter_project)}"
         response = requests.get(url, auth=self.auth)
 
-        if response.status_code != requests.codes['OK']:
+        if response.status_code != requests.codes["OK"]:
             raise PyTransifexException(response)
 
-        return json.loads(codecs.decode(response.content, 'utf-8'))
+        return json.loads(codecs.decode(response.content, "utf-8"))
 
     def delete_team(self, team_slug: str):
-        url = 'https://rest.api.transifex.com/teams/o:{o}:t:{t}'.format(o=self.organization, t=team_slug)
-        response = requests.delete(url, headers={'Content-Type': 'application/vnd.api+json','Authorization': 'Bearer {}'.format(self.api_key)})
-        if response.status_code != requests.codes['OK']:
+        filter_team = f"o:{self.organization}:t:{team_slug}"
+        url = f"https://rest.api.transifex.com/teams/{parse.quote(filter_team)}"
+        response = requests.delete(
+            url,
+            headers={
+                "Content-Type": "application/vnd.api+json",
+                "Authorization": "Bearer {}".format(self.api_key),
+            },
+        )
+        if response.status_code != requests.codes["OK"]:
             raise PyTransifexException(response)
 
-    def create_resource(self,
-                     project_slug,
-                     path_to_file,
-                     resource_slug=None,
-                     resource_name=None):
+    def create_resource(
+        self, project_slug, path_to_file, resource_slug=None, resource_name=None
+    ):
         """
         Creates a new resource with the specified slug from the given file.
 
@@ -186,21 +202,23 @@ class Transifex(object):
         `PyTransifexException`
         `IOError`
         """
-        url = 'https://www.transifex.com/api/2/project/{p}/resources/'.format(p=project_slug)
+        url = "https://www.transifex.com/api/2/project/{p}/resources/".format(
+            p=project_slug
+        )
         data = {
-            'name': resource_name or resource_slug,
-            'slug': resource_slug,
-            'i18n_type': self.i18n_type,
-            'content': open(path_to_file, 'r').read()
+            "name": resource_name or resource_slug,
+            "slug": resource_slug,
+            "i18n_type": self.i18n_type,
+            "content": open(path_to_file, "r").read(),
         }
         response = requests.post(
             url,
             data=json.dumps(data),
             auth=self.auth,
-            headers={'content-type': 'application/json'}
+            headers={"content-type": "application/json"},
         )
 
-        if response.status_code != requests.codes['CREATED']:
+        if response.status_code != requests.codes["CREATED"]:
             raise PyTransifexException(response)
 
     def delete_resource(self, project_slug, resource_slug):
@@ -218,13 +236,14 @@ class Transifex(object):
         ------
         `PyTransifexException`
         """
-        url = '{u}/project/{s}/resource/{r}'.format(u=self._base_api_url, s=project_slug, r=resource_slug)
+        url = "{u}/project/{s}/resource/{r}".format(
+            u=self._base_api_url, s=project_slug, r=resource_slug
+        )
         response = requests.delete(url, auth=self.auth)
-        if response.status_code != requests.codes['NO_CONTENT']:
+        if response.status_code != requests.codes["NO_CONTENT"]:
             raise PyTransifexException(response)
 
-    def update_source_translation(self, project_slug, resource_slug,
-                                  path_to_file):
+    def update_source_translation(self, project_slug, resource_slug, path_to_file):
         """
         Update the source translation for a give resource
 
@@ -250,22 +269,26 @@ class Transifex(object):
         `PyTransifexException`
         `IOError`
         """
-        url = 'https://www.transifex.com/api/2/project/{s}/resource/{r}/content'.format(
+        url = "https://www.transifex.com/api/2/project/{s}/resource/{r}/content".format(
             s=project_slug, r=resource_slug
         )
-        content = open(path_to_file, 'r').read()
-        data = {'content': content}
+        content = open(path_to_file, "r").read()
+        data = {"content": content}
         response = requests.put(
-             url, data=json.dumps(data), auth=self.auth, headers={'content-type': 'application/json'},
+            url,
+            data=json.dumps(data),
+            auth=self.auth,
+            headers={"content-type": "application/json"},
         )
 
-        if response.status_code != requests.codes['OK']:
+        if response.status_code != requests.codes["OK"]:
             raise PyTransifexException(response)
         else:
-            return json.loads(codecs.decode(response.content, 'utf-8'))
+            return json.loads(codecs.decode(response.content, "utf-8"))
 
-    def create_translation(self, project_slug, resource_slug, language_code,
-                           path_to_file) -> dict:
+    def create_translation(
+        self, project_slug, resource_slug, language_code, path_to_file
+    ) -> dict:
         """
         Creates or updates the translation for the specified language
 
@@ -293,25 +316,30 @@ class Transifex(object):
         `PyTransifexException`
         `IOError`
         """
-        url = 'https://www.transifex.com/api/2/project/{s}/resource/{r}/translation/{l}'.format(
+        url = "https://www.transifex.com/api/2/project/{s}/resource/{r}/translation/{l}".format(
             s=project_slug, r=resource_slug, l=language_code
         )
-        content = open(path_to_file, 'r').read()
-        data = {'content': content}
+        content = open(path_to_file, "r").read()
+        data = {"content": content}
         response = requests.put(
-             url, data=json.dumps(data), auth=self.auth, headers={'content-type': 'application/json'},
+            url,
+            data=json.dumps(data),
+            auth=self.auth,
+            headers={"content-type": "application/json"},
         )
 
-        if response.status_code != requests.codes['OK']:
+        if response.status_code != requests.codes["OK"]:
             raise PyTransifexException(response)
         else:
-            return json.loads(codecs.decode(response.content, 'utf-8'))
+            return json.loads(codecs.decode(response.content, "utf-8"))
 
-    def get_translation(self,
-                        project_slug: str,
-                        resource_slug: str,
-                        language_code: str,
-                        path_to_file: str):
+    def get_translation(
+        self,
+        project_slug: str,
+        resource_slug: str,
+        language_code: str,
+        path_to_file: str,
+    ):
         """
         Returns the requested translation, if it exists. The translation is
         returned as a serialized string, unless the GET parameter file is
@@ -335,15 +363,16 @@ class Transifex(object):
         `PyTransifexException`
         `IOError`
         """
-        url = 'https://www.transifex.com/api/2/project/{s}/resource/{r}/translation/{l}'.format(
-            s=project_slug, r=resource_slug, l=language_code)
-        query = {'file': ''}
+        url = "https://www.transifex.com/api/2/project/{s}/resource/{r}/translation/{l}".format(
+            s=project_slug, r=resource_slug, l=language_code
+        )
+        query = {"file": ""}
         response = requests.get(url, auth=self.auth, params=query)
-        if response.status_code != requests.codes['OK']:
+        if response.status_code != requests.codes["OK"]:
             raise PyTransifexException(response)
         else:
             os.makedirs(os.path.dirname(path_to_file), exist_ok=True)
-            with open(path_to_file, 'wb') as f:
+            with open(path_to_file, "wb") as f:
                 for line in response.iter_content():
                     f.write(line)
 
@@ -367,17 +396,21 @@ class Transifex(object):
         ------
         `PyTransifexException`
         """
-        url = 'https://www.transifex.com/api/2/project/{s}/resource/{r}'.format(s=project_slug, r=resource_slug)
-        response = requests.get(url, auth=self.auth, params={'details': ''})
+        url = "https://www.transifex.com/api/2/project/{s}/resource/{r}".format(
+            s=project_slug, r=resource_slug
+        )
+        response = requests.get(url, auth=self.auth, params={"details": ""})
 
-        if response.status_code != requests.codes['OK']:
+        if response.status_code != requests.codes["OK"]:
             raise PyTransifexException(response)
 
-        content = json.loads(codecs.decode(response.content, 'utf-8'))
-        languages = [language['code'] for language in content['available_languages']]
+        content = json.loads(codecs.decode(response.content, "utf-8"))
+        languages = [language["code"] for language in content["available_languages"]]
         return languages
 
-    def create_language(self, project_slug: str, language_code: str, coordinators: list):
+    def create_language(
+        self, project_slug: str, language_code: str, coordinators: list
+    ):
         """
         Create a new language for the given project
         Parameters
@@ -387,16 +420,20 @@ class Transifex(object):
         coordinators:
             list of coordinators
         """
-        url = 'https://www.transifex.com/api/2/project/{s}/languages'.format(s=project_slug)
-        data = {'language_code': language_code, 'coordinators': coordinators}
-        response = requests.post(url,
-                                 headers={'content-type': 'application/json'},
-                                 auth=self.auth,
-                                 data=json.dumps(data))
-        if response.status_code != requests.codes['CREATED']:
+        url = "https://www.transifex.com/api/2/project/{s}/languages".format(
+            s=project_slug
+        )
+        data = {"language_code": language_code, "coordinators": coordinators}
+        response = requests.post(
+            url,
+            headers={"content-type": "application/json"},
+            auth=self.auth,
+            data=json.dumps(data),
+        )
+        if response.status_code != requests.codes["CREATED"]:
             raise PyTransifexException(response)
 
-    def coordinator(self, project_slug: str, language_code: str = 'en') -> str:
+    def coordinator(self, project_slug: str, language_code: str = "en") -> str:
         """
         Return the coordinator of the the project
 
@@ -405,12 +442,14 @@ class Transifex(object):
         project_slug:
         language_code:
         """
-        url = 'https://www.transifex.com/api/2/project/{s}/language/{l}/coordinators'.format(s=project_slug, l=language_code)
+        url = "https://www.transifex.com/api/2/project/{s}/language/{l}/coordinators".format(
+            s=project_slug, l=language_code
+        )
         response = requests.get(url, auth=self.auth)
-        if response.status_code != requests.codes['OK']:
+        if response.status_code != requests.codes["OK"]:
             raise PyTransifexException(response)
-        content = json.loads(codecs.decode(response.content, 'utf-8'))
-        return content['coordinators']
+        content = json.loads(codecs.decode(response.content, "utf-8"))
+        return content["coordinators"]
 
     def project_exists(self, project_slug) -> bool:
         """
@@ -422,15 +461,18 @@ class Transifex(object):
         project_slug
             The project slug
         """
-        url = 'https://rest.api.transifex.com/projects/o:{o}:p:{s}'.format(o=self.organization, s=project_slug)
-        response = requests.get(url,
-                                headers={
-                                    'Content-Type': 'application/vnd.api+json',
-                                    'Authorization': 'Bearer {}'.format(self.api_key)
-                                })
-        if response.status_code == requests.codes['OK']:
+        filter_project = f"o:{self.organization}:p:{project_slug}"
+        url = f"https://rest.api.transifex.com/projects/{parse.quote(filter_project)}"
+        response = requests.get(
+            url,
+            headers={
+                "Content-Type": "application/vnd.api+json",
+                "Authorization": "Bearer {}".format(self.api_key),
+            },
+        )
+        if response.status_code == requests.codes["OK"]:
             return True
-        elif response.status_code == requests.codes['NOT_FOUND']:
+        elif response.status_code == requests.codes["NOT_FOUND"]:
             return False
         else:
             raise PyTransifexException(response)
@@ -439,9 +481,10 @@ class Transifex(object):
         """
         Check the connection to the server and the auth credentials
         """
-        url = 'https://api.transifex.com/organizations/{}/projects/'.format(self.organization)
+        filter_organization = f"o:{self.organization}"
+        url = f"https://rest.api.transifex.com/projects?filter\[organization\]={parse.quote(filter_organization)}"
         response = requests.get(url, auth=self.auth)
-        success = response.status_code == requests.codes['OK']
+        success = response.status_code == requests.codes["OK"]
         if not success:
             raise PyTransifexException(response)
         return success
